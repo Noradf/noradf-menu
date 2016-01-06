@@ -1,0 +1,9 @@
+{
+  "name": "noradf-menu",
+  "version": "0.1.0",
+  "alias": "menu",
+  "description": "Noradf Menu - A Noradf module",
+  "dependencies": {
+    "wlist": "^1.2.2"
+  }
+}
