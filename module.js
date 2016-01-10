@@ -1,68 +1,90 @@
 'use strict';
 
-var Wlist = require('wlist');
+var Wlist = require('wlist'),
+    util = require('util');
 
 module.exports = function () {
 
-    var menuObj = {};
+    function Menu(id, object) {
+        this.id = id;
+        this.object = object;
 
-    return {
-        putMenu: function (name, weight) {
-            if (!menuObj.menus) {
-                menuObj.menus = new Wlist();
+        Object.defineProperty(this, '_items', {
+            enumerable: false,
+            configurable: true,
+            writable: true
+        });
+
+        Object.defineProperty(this, 'type', {
+            enumerable: true,
+            configurable: true,
+            get: function () {
+                return 'menu';
             }
+        });
 
-            var submenu = {
-                name: name
-            };
+        Object.defineProperty(this, 'items', {
+            get: function() {
+                return (this._items && this._items.get()) || [];
+            },
+            enumerable: true
+        });
+    }
 
-            return menuObj.menus.put(submenu, name, weight);
-        },
-        getSubMenu: function (submenu) {
-            return menuObj.menus && menuObj.menus.get(submenu);
-        },
-        putItem: function (submenu, name, obj, weight) {
-            if (arguments.length === 2 || (arguments.length === 3 && !isNaN(arguments[2]))) {
-                weight = arguments[2];
-                obj = arguments[1];
-                name = arguments[0];
-                submenu = null;
+    function Item(id, object) {
+        Menu.call(this, id, object);
+
+        Object.defineProperty(this, 'type', {
+            enumerable: true,
+            get: function () {
+                return 'item';
             }
+        });
+    }
 
-            var menu = submenu ? this.getSubMenu(submenu) : menuObj;
+    util.inherits(Item, Menu);
 
-            if (!menu) {
-                return -1;
-            }
-
-            if (!menu.items) {
-                menu.items = new Wlist();
-            }
-
-            return menu.items.put(obj, name, weight);
-        },
-        get: function () {
-            var menu = {};
-            menu.items = menuObj.items && menuObj.items.get();
-
-            var submenus = menuObj.menus && menuObj.menus.get();
-            if (submenus) {
-                menu.menus = [];
-                submenus.forEach(function (submenu) {
-                    var submenuObj = {name: submenu.name};
-                    menu.menus.push(submenuObj);
-
-                    var subitems = submenu.items && submenu.items.get();
-                    if (subitems) {
-                        submenuObj.items = [];
-                        subitems.forEach(function (item) {
-                            submenuObj.items.push(item);
-                        });
-                    }
-                });
-            }
-
-            return menu;
+    Menu.prototype.putMenu = function (id, object, weight) {
+        if (!this._items) {
+            this._items = new Wlist();
         }
+
+        var submenu = new Menu(id, object);
+
+        this._items.put(submenu, id, weight);
+        return submenu;
     };
+
+    Menu.prototype.putItem = function (menuId, id, object, weight) {
+        if (arguments.length === 2 || (arguments.length === 3 && !isNaN(arguments[2]))) {
+            weight = arguments[2];
+            object = arguments[1];
+            id = arguments[0];
+            menuId = null;
+        }
+
+        var menu = (menuId && this.get(menuId)) || this;
+
+        if (!menu) {
+            return -1;
+        }
+
+        if (!(menu instanceof Menu)) {
+            return -2;
+        }
+
+        if (!menu._items) {
+            menu._items = new Wlist();
+        }
+
+        var item = new Item(id, object);
+        return menu._items.put(item, id, weight);
+    };
+
+    Menu.prototype.get = function (id) {
+        return id && this._items && this._items.get(id);
+    };
+
+    var root = new Menu('root');
+    return root;
 };
